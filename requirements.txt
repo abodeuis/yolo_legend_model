@@ -1,2 +1,4 @@
 rasterio
 patchify
+tqdm
+ultralytics

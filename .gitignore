@@ -1,0 +1,7 @@
+# Extensions to ignore
+*.pyc
+*.DS_Store
+
+# Directories to ignore
+[Llogs]
+venv
