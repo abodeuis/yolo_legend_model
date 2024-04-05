@@ -1,0 +1,11 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/img1, path/to/img2, ..]
+path: ./
+train: training/images
+val: validation/images
+test: final_evaluation/images
+
+# Classes
+names:  
+  0: point
+  1: line
+  2: polygon
