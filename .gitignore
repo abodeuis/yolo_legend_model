@@ -1,7 +1,13 @@
 # Extensions to ignore
 *.pyc
 *.DS_Store
+*.pt
 
 # Directories to ignore
-[Llogs]
+[Ll]ogs
 venv
+.vscode
+.pytest*
+datasets
+runs
+yolo_training*
