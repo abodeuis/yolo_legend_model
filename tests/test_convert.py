@@ -6,7 +6,7 @@ from cmaas_utils.types import MapUnitType
 
 from tests.utilities import init_test_log
 from src.visualization import viz_yolo_annotation
-from src.convert import convert_pixel_box_to_yolo_box, convert_cmass_file_to_yolo
+from src.convert import convert_pixel_box_to_yolo_box, convert_cmass_file_to_yolo, convert_cmass_dataset_to_yolo
 
 class TestConvertToYolo:
     def test_convert_pixel_box_to_yolo_box(self):
@@ -55,6 +55,25 @@ class TestConvertToYolo:
 
         # Test conversion
         convert_cmass_file_to_yolo(test_image, test_label, yolo_image_dir, yolo_label_dir, classes, patch_size, patch_overlap)
+
+        log.info('Test passed successfully')
+
+    def test_convert_cmass_dataset_to_yolo(self):
+        log = init_test_log('TestConvertToYolo/test_convert_cmass_dataset_to_yolo')
+        log.info('Testing conversion of cmass dataset to yolo format')
+        train_dir = 'tests/uncommited_data/cma_sample/training'
+        val_dir = 'tests/uncommited_data/cma_sample/validation'
+        test_dir = 'tests/uncommited_data/cma_sample/final_evaluation'
+        train_files = [os.path.join(train_dir,f) for f in os.listdir(train_dir) if f.endswith('.json')]
+        val_files = [os.path.join(val_dir,f) for f in os.listdir(val_dir) if f.endswith('.json')]
+        test_files = [os.path.join(test_dir,f) for f in os.listdir(test_dir) if f.endswith('.json')]
+        output_dir = 'tests/logs/TestConvertToYolo/cma_sample'
+        patch_size = 512
+        patch_overlap = 32
+        classes = [MapUnitType.POINT, MapUnitType.LINE, MapUnitType.POLYGON]
+
+        # Test conversion
+        convert_cmass_dataset_to_yolo(train_files, val_files, test_files, output_dir, classes, patch_size, patch_overlap)
 
         log.info('Test passed successfully')
 

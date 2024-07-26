@@ -4,10 +4,22 @@ import numpy as np
 from PIL import Image
 from typing import List
 from patchify import patchify
+from rich.progress import Progress
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cmaas_utils.io as io
 
 log = logging.getLogger(__name__)
+
+def progress_wrapper(progress:Progress, task:int, func, *args, **kwargs):
+    try:
+        result = func(*args, **kwargs)
+        progress.update(task, advance=1)
+        return result
+    except Exception as e:
+        log.exception(e)
+        progress.update(task, advance=1)
+        return False
 
 def boundingBox(array):
     min_xy = [min(array, key=lambda x: (x[0]))[0], min(array, key=lambda x: (x[1]))[1]]
@@ -103,3 +115,86 @@ def convert_cmass_file_to_yolo(image_path:str, label_path:str, yolo_image_dir:st
             pil_img = Image.fromarray(image_patches[j,i].transpose(1,2,0))
             pil_img.save(patch_filename)
     log.info(f'Saved {valid_patches} image patches with {annotations} annotations for {os.path.basename(os.path.splitext(label_path)[0])}')
+    return True
+
+def convert_cmass_dataset_to_yolo(train_files, val_files, test_files, output_dir, classes, patch_size, patch_overlap):
+
+    # Create Output Directory
+    log.info(f'Creating output directories in {output_dir}')
+    subfolders = ['train', 'val', 'test']
+    subsubfolders = ['images', 'labels']
+    for subfolder in subfolders:
+        for subsubfolder in subsubfolders:
+            os.makedirs(os.path.join(output_dir, subfolder, subsubfolder), exist_ok=True)
+
+    # Convert Data
+    log.info('Starting data conversion')
+    with Progress() as progress:
+        train_task = progress.add_task("Train", total=len(train_files))
+        val_task = progress.add_task("Val  ", total=len(val_files))
+        test_task = progress.add_task("Test ", total=len(test_files))
+
+        with ThreadPoolExecutor() as p:
+            futures = []
+            # Train files
+            train_image_dir = os.path.join(output_dir, 'train', 'images')
+            train_label_dir = os.path.join(output_dir, 'train', 'labels')
+            for file in train_files:
+                basepath = os.path.splitext(file)[0]
+                futures.append(p.submit(
+                    progress_wrapper, progress, train_task,
+                    convert_cmass_file_to_yolo, f'{basepath}.tif', f'{basepath}.json', train_image_dir, train_label_dir, classes, patch_size, patch_overlap
+                ))
+            # Val files
+            val_image_dir = os.path.join(output_dir, 'val', 'images')
+            val_label_dir = os.path.join(output_dir, 'val', 'labels')
+            for file in val_files:
+                basepath = os.path.splitext(file)[0]
+                futures.append(p.submit(
+                    progress_wrapper, progress, val_task,
+                    convert_cmass_file_to_yolo, f'{basepath}.tif', f'{basepath}.json', val_image_dir, val_label_dir, classes, patch_size, patch_overlap
+                ))
+            # Test files
+            test_image_dir = os.path.join(output_dir, 'test', 'images')
+            test_label_dir = os.path.join(output_dir, 'test', 'labels')
+            for file in test_files:
+                basepath = os.path.splitext(file)[0]
+                futures.append(p.submit(
+                    progress_wrapper, progress, test_task,
+                    convert_cmass_file_to_yolo, f'{basepath}.tif', f'{basepath}.json', test_image_dir, test_label_dir, classes, patch_size, patch_overlap
+                ))
+
+            # Wait till files are converted
+            successes = 0
+            failures = 0
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    successes += 1
+                else:
+                    failures += 1
+
+    log.info(f'Converted {successes} files successfully, {failures} files failed')
+    yaml_path = create_yaml_config(output_dir, train_image_dir, val_image_dir, test_image_dir, classes)
+    log.info(f'Saved yaml config for dataset at {yaml_path}')
+    return yaml_path
+
+def create_yaml_config(output_dir: str, train_dir:str, val_dir:str, test_dir:str, classes:List[str], filename='data.yaml'):
+        """
+        """
+        yaml_contents = '# Data\n'
+        yaml_contents += f'path: {os.path.abspath(output_dir)}\n'
+        yaml_contents += f'train: {os.path.abspath(train_dir)}\n'
+        yaml_contents += f'val: {os.path.abspath(val_dir)}\n'
+        yaml_contents += f'test: {os.path.abspath(test_dir)}\n'
+        yaml_contents += '\n'
+        yaml_contents += '# Classes\n'
+        yaml_contents += 'names:\n'
+        for i, name in enumerate(classes):
+            yaml_contents += f'    {i}: {name}\n'
+        
+        yaml_path = os.path.join(output_dir, filename)
+        with open(yaml_path, 'w') as fh:
+            fh.write(yaml_contents)
+
+        return yaml_path
