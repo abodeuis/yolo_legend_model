@@ -9,6 +9,7 @@ def viz_map_unit(image, map_unit, color=(0,255,0), thickness=5):
     # logging.debug(f'Viz yolo annotation min_xy: {map_unit.bounding_box[0]} max_xy: {map_unit.bounding_box[1]}')
     cv2.rectangle(image, map_unit.bounding_box[0], map_unit.bounding_box[1], color, thickness)
     cv2.putText(image, map_unit.label, center, cv2.FONT_HERSHEY_SIMPLEX, 1, color=color, thickness=2)
+    return image
 
 def viz_yolo_annotation(image, annotation, color=(255,0,255), thickness=5):
     h,w,c = image.shape
@@ -19,3 +20,4 @@ def viz_yolo_annotation(image, annotation, color=(255,0,255), thickness=5):
     logging.debug(f'Viz yolo annotation min_xy: {min_xy} max_xy: {max_xy}')
     cv2.rectangle(image, min_xy, max_xy, color, thickness)
     cv2.putText(image, str(annotation[0]), center, cv2.FONT_HERSHEY_SIMPLEX, 1, color=color, thickness=2)
+    return image

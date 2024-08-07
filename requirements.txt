@@ -4,7 +4,7 @@ geopandas
 pydantic
 git+https://github.com/DARPA-CRITICALMAAS/cdr_schemas.git@v0.3.3
 --extra-index-url https://test.pypi.org/simple/
-cmaas_utils>=0.1.9
+cmaas_utils>=0.1.10
 
 # Yolo
 patchify
