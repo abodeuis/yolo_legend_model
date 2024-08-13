@@ -89,6 +89,7 @@ def main(args):
     
     os.makedirs(args.output, exist_ok=True)
 
+    ocr_reader = easyocr.Reader(['en'])
     interface = YoloInterface(args.checkpoint)
     classes = [MapUnitType.POINT, MapUnitType.LINE, MapUnitType.POLYGON]
     for file in args.data:
@@ -106,40 +107,88 @@ def main(args):
             legend_areas = None
 
         # Perform inference
-        prediction = interface.inference(image, legend_areas)
+        predictions = interface.inference(image, legend_areas)
         log.info(f'Inference complete on {file}')
+
+        # Convert yolo predictions to cmass format
+        legend = Legend(provenance=Provenance(name='Yolo Legends', version='0.1'))
+        for i, predict in enumerate(predictions):
+            bbox = [predict[0][:2], predict[0][2:]]
+            confidence = predict[1]
+            unit_type = classes[int(predict[2])]
+
+            # Get label from OCR
+            if unit_type == MapUnitType.POLYGON:
+                label = ''
+                ocr_conf = []
+                label_img = image[:,int(bbox[0][1]):int(bbox[1][1]), int(bbox[0][0]):int(bbox[1][0])]
+                label_img = label_img.transpose(1,2,0)
+                ocr_predictions = ocr_reader.readtext(label_img)
+                for ocr_predict in ocr_predictions:
+                    label = label + ocr_predict[1] + ' '
+                    ocr_conf.append(ocr_predict[2])
+                label = label.strip()
+                if len(ocr_conf) > 0:
+                    ocr_conf = sum(ocr_conf) / len(ocr_conf)
+                else:
+                    ocr_conf = 0
+            else:
+                label = f'{unit_type.to_str()}_{i}'
+                ocr_conf = 0
+
+            legend.features.append(MapUnit(type=unit_type, bounding_box=bbox, label=label))
 
         # Visualize the results
         viz_image = image.transpose(1,2,0).copy()
         log.debug(f'Viz image shape : {viz_image.shape}')
         log.info(f'Visualizing the results for {file}')
-        for predict in prediction:
-            unit = MapUnit(type=classes[int(predict[2])], bounding_box=[predict[0][:2], predict[0][2:]])
-            viz_map_unit(viz_image, unit)
+        for feature in legend.features:
+            viz_map_unit(viz_image, feature)
         
         # Save the results
         log.info(f'Saving the results for {file}')
         pil_image = Image.fromarray(viz_image)
         filename = os.path.join(args.output, os.path.splitext(os.path.basename(file))[0] + '.png')
         pil_image.save(filename)
+        
+        json_path = os.path.join(args.output, os.path.splitext(os.path.basename(file))[0] + '.json')
+        with open(json_path, 'w') as fh:
+            fh.write(legend.model_dump_json())
         break
 
 
 if __name__=='__main__':
     args = parse_command_line()
+    import easyocr
+    from PIL import Image
+
     import cmaas_utils.io as io
     from cmaas_utils.logging import start_logger
+    from cmaas_utils.types import Legend, MapUnit, MapUnitType, Provenance
     from src.yolo_interface import YoloInterface
-    from cmaas_utils.types import MapUnit, MapUnitType
     from src.visualization import viz_map_unit
-    from PIL import Image
     main(args)
 
 # if __name__=='__ipython__':
-import cmaas_utils.io as io
-from src.yolo_interface import YoloInterface
-image, _, _ = io.loadGeoTiff('tests/uncommited_data/cma_sample/validation/AR_StJoe.tif')
-interface = YoloInterface('cma_150.pt')
-layout = io.loadLayoutJson('../data/validation/uncharted_masks/AR_StJoe.json')
-legend_areas = [layout.point_legend, layout.line_legend, layout.polygon_legend]
-prediction = interface.inference(image, legend_areas)
+# import easyocr
+# import pytesseract
+# from PIL import Image
+# import cmaas_utils.io as io
+# from src.yolo_interface import YoloInterface
+# image, _, _ = io.loadGeoTiff('tests/uncommited_data/cma_sample/validation/AR_StJoe.tif')
+# interface = YoloInterface('cma_150.pt')
+# layout = io.loadLayoutJson('../../datasets/validation/uncharted_masks/AR_StJoe.json')
+# legend_areas = [layout.point_legend, layout.line_legend, layout.polygon_legend]
+# prediction = interface.inference(image, legend_areas)
+
+# label = prediction[4]
+# label_img = image[:,int(label[0][1]):int(label[0][3]), int(label[0][0]):int(label[0][2])]
+# label_img = label_img.transpose(1,2,0)
+# Image.fromarray(pil_img).show()
+
+
+# pytesseract.image_to_string(label_img)
+# tess_result = pytesseract.image_to_data(label_img, output_type=pytesseract.Output.DICT)
+
+# ocr_reader = easyocr.Reader(['en'])
+# easy_result = ocr_reader.readtext(label_img, paragraph=False)

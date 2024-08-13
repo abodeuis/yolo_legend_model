@@ -1,50 +1,15 @@
-import cv2
 import torch
 import logging
 import numpy as np
 from patchify import patchify
 from ultralytics import YOLO
 
-import pytesseract
-
-from src.convert import is_intersecting, boundingBox
+from src.utilities import is_intersecting, mask_and_crop
 
 log = logging.getLogger('YoloInference')
 
-def ocr_box(image, bounding_box):
-    image = image[:,bounding_box[0][0]:bounding_box[1][0],bounding_box[0][1]:bounding_box[1][1]]
-    result = pytesseract.image_to_data(image, lang='eng')
-
-
-def mask_and_crop(image, mask_contours):
-    """
-    Mask image with mask_contours and crop the image to the bounding box of the mask
-    image : numpy array of shape (C,H,W)
-    mask_contours : list of numpy arrays of shape (N,2) where N is the number of points in the contour
-    """
-    image = image.transpose(1,2,0)
-    min_pt, max_pt = None, None
-    area_mask = np.zeros((image.shape[0], image.shape[1], 1), dtype='uint8')
-    for area in mask_contours:
-        area_min_pt, area_max_pt = boundingBox(area)
-        cv2.drawContours(area_mask, [area], -1, 255, -1)
-        if min_pt is None:
-            min_pt = area_min_pt
-            max_pt = area_max_pt
-        else:
-            min_pt = (min(min_pt[0], area_min_pt[0]), min(min_pt[1], area_min_pt[1]))
-            max_pt = (max(max_pt[0], area_max_pt[0]), max(max_pt[1], area_max_pt[1]))
-
-    # Mask non legend areas
-    mask_image = cv2.bitwise_and(image, image, mask=area_mask)
-    crop_image = mask_image[min_pt[1]:max_pt[1], min_pt[0]:max_pt[0],:]
-    crop_image = crop_image.transpose(2,0,1)
-    return crop_image, min_pt
-
 class YoloInterface:
     def __init__(self, checkpoint='cma_150.pt'):
-        self.name = 'YoloInterface'
-        self.version = '0.1'
         self._checkpoint = checkpoint
         self.model = YOLO(self._checkpoint)
         
@@ -54,13 +19,23 @@ class YoloInterface:
         self.patch_overlap = 32
 
     def my_norm(self, data):
+        """
+        Normalize data to [0,1] range
+        """
         norm_data = data / 255.0
         return norm_data
 
     def inference(self, image, legend_area=None):
         """
-        Image should be in CHW format
-        legend_area is a list of bounding boxes
+        Perform inference on an image and return the predicted bounding boxes.
+
+        Args:
+            image : numpy array of shape (C,H,W)
+            legend_area : list of numpy arrays of shape (N,2) where N is the number of points in the contour
+                that defines the legend area. If None, the entire image is used.
+
+        Returns:
+            list of tuples of the format ([x1,y1,x2,y2], conf, cls)
         """
 
         # Get the size of the map
@@ -99,7 +74,7 @@ class YoloInterface:
         for i in range(0, len(norm_tensor), self.batch_size):
             batch = norm_tensor[i:i+self.batch_size]
             # Run inference on batch
-            gens = self.model.predict(source=batch, stream=True)
+            gens = self.model.predict(source=batch, stream=True, verbose=False)
             for r in gens:
                 prediction_patches.append(r.boxes.data.cpu().numpy())
 

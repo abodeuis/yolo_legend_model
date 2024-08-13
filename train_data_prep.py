@@ -105,7 +105,6 @@ def boundingBox(array):
     return [min_xy, max_xy]
 
 def is_intersecting(bbox1, bbox2):
-    
     return not (bbox1[0] > bbox2[2] or bbox1[2] < bbox2[0] or bbox1[1] > bbox2[3] or bbox1[3] < bbox2[1])
 
 def main():
