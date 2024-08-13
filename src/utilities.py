@@ -51,35 +51,6 @@ def progress_wrapper(progress, task:int, func, *args, **kwargs):
         log.exception(e)
         progress.update(task, advance=1)
         pass
-
-def convert_pixel_to_yolo_box(bbox, row, col, patch_size, patch_overlap):
-    """
-    Convert bounding box from pixel space to YOLO format
-    Returns boudding box in in [x,y,w,h] format
-
-    Args:
-        bbox (list): Bounding box in pixel space
-        row (int): Row of patch
-        col (int): Column of patch
-        patch_size (int): Size of patch
-        patch_overlap (int): Overlap of patch
-    """
-    min_xy, max_xy = boundingBox(bbox)
-    patch_step = patch_size-patch_overlap
-    if is_intersecting([*min_xy, *max_xy], [row*patch_size, col*patch_size, (row+1)*patch_size, (col+1)*patch_size]):
-        # Convert full image px coords to patchwise normalized coords (0-1)
-        # Convert image-wise coords to patch-wise coords, cropping to just the patch
-        ul_x = max(0, (min_xy[0] - row*patch_step))
-        ul_y = max(0, (min_xy[1] - col*patch_step))
-        br_x = min(1, (max_xy[0] - row*patch_step))
-        br_y = min(1, (max_xy[1] - col*patch_step))
-
-        w = (br_x-ul_x) / patch_size
-        h = (br_y-ul_y) / patch_size
-        x = (ul_x + w/2) / patch_size
-        y = (ul_y + h/2) / patch_size
-
-        return [x, y, w, h]
     
 def mask(image, contours):
     """

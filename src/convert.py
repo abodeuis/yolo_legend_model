@@ -8,60 +8,41 @@ from rich.progress import Progress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cmaas_utils.io as io
+from src.utilities import boundingBox, is_intersecting, progress_wrapper
 
 log = logging.getLogger(__name__)
 
-def progress_wrapper(progress:Progress, task:int, func, *args, **kwargs):
-    try:
-        result = func(*args, **kwargs)
-        progress.update(task, advance=1)
-        return result
-    except Exception as e:
-        log.exception(e)
-        progress.update(task, advance=1)
-        return False
-
-def boundingBox(array):
-    min_xy = [min(array, key=lambda x: (x[0]))[0], min(array, key=lambda x: (x[1]))[1]]
-    max_xy = [max(array, key=lambda x: (x[0]))[0], max(array, key=lambda x: (x[1]))[1]]
-    return [min_xy, max_xy]
-
-def is_intersecting(bbox1, bbox2):
-    return not (bbox1[0] > bbox2[2] or bbox1[2] < bbox2[0] or bbox1[1] > bbox2[3] or bbox1[3] < bbox2[1])
-
-def convert_pixel_box_to_yolo_box(bbox:List[List[float]], row:int, col:int, patch_size:int, patch_overlap:int):
+def convert_pixel_to_yolo_box(bbox, row, col, patch_size, patch_overlap):
     """
-    Convert annotation from CMASS format to YOLO format
-    Returns annotation in [x,y,w,h] format
+    Convert bounding box from pixel space to YOLO format
+    Returns boudding box in in [x,y,w,h] format
+
+    Args:
+        bbox (list): Bounding box in pixel space
+        row (int): Row of patch
+        col (int): Column of patch
+        patch_size (int): Size of patch
+        patch_overlap (int): Overlap of patch
+    
+    Returns:
+        list: Bounding box in YOLO format [x,y,w,h]
     """
     min_xy, max_xy = boundingBox(bbox)
     patch_step = patch_size-patch_overlap
-    if is_intersecting([*min_xy, *max_xy], [row*patch_step, col*patch_step, ((row+1)*patch_step+patch_overlap), ((col+1)*patch_step+patch_overlap)]):
+    if is_intersecting([*min_xy, *max_xy], [row*patch_size, col*patch_size, (row+1)*patch_size, (col+1)*patch_size]):
         # Convert full image px coords to patchwise normalized coords (0-1)
         # Convert image-wise coords to patch-wise coords, cropping to just the patch
         ul_x = max(0, (min_xy[0] - row*patch_step))
         ul_y = max(0, (min_xy[1] - col*patch_step))
-        lr_x = min(patch_size, (max_xy[0] - row*patch_step))
-        lr_y = min(patch_size, (max_xy[1] - col*patch_step))
+        br_x = min(1, (max_xy[0] - row*patch_step))
+        br_y = min(1, (max_xy[1] - col*patch_step))
 
-        w = (lr_x - ul_x) / patch_size
-        h = (lr_y - ul_y) / patch_size
-        x = (ul_x + (lr_x - ul_x)/2) / patch_size
-        y = (ul_y + (lr_y - ul_y)/2) / patch_size
+        w = (br_x-ul_x) / patch_size
+        h = (br_y-ul_y) / patch_size
+        x = (ul_x + w/2) / patch_size
+        y = (ul_y + h/2) / patch_size
 
         return [x, y, w, h]
-    
-# def old_convert_pixel_box_to_yolo_box(bbox, row, col, patch_size, patch_overlap):
-#     min_xy, max_xy = boundingBox(bbox)
-#     patch_step = patch_size-patch_overlap
-    
-#     pix_w = (max_xy[0] - min_xy[0])
-#     pix_h = (max_xy[1] - min_xy[1])
-#     x = (min_xy[0] - row*patch_step + pix_w/2) / patch_size
-#     y = (min_xy[1] - col*patch_step + pix_h/2) / patch_size
-#     w = pix_w / patch_size
-#     h = pix_h / patch_size
-#     return [x, y, w, h]
 
 def convert_cmass_file_to_yolo(image_path:str, label_path:str, yolo_image_dir:str, yolo_label_dir:str, classes:List[str], patch_size:int, patch_overlap:int):
     """
@@ -89,7 +70,7 @@ def convert_cmass_file_to_yolo(image_path:str, label_path:str, yolo_image_dir:st
         for j in range(image_patches.shape[1]):
             annotation_str = ''
             for feature in legend.features:
-                yolo_box = convert_pixel_box_to_yolo_box(feature.bounding_box, i, j, patch_size, patch_overlap)
+                yolo_box = convert_pixel_to_yolo_box(feature.bounding_box, i, j, patch_size, patch_overlap)
                 if yolo_box is not None:
                     annotations += 1
                     annotation_str += f'{classes.index(feature.type)} {" ".join([str(x) for x in yolo_box])}\n'

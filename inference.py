@@ -77,6 +77,9 @@ def parse_command_line():
 
 
 def main(args):
+    """
+    
+    """
     global log
     log = start_logger(LOGGER_NAME, args.log, log_level=FILE_LOG_LEVEL, console_log_level=STREAM_LOG_LEVEL, writemode='w')
 
@@ -111,10 +114,10 @@ def main(args):
         log.info(f'Inference complete on {file}')
 
         # Convert yolo predictions to cmass format
-        legend = Legend(provenance=Provenance(name='Yolo Legends', version='0.1'))
+        legend = Legend(provenance=Provenance(name='UIUC Yolo Legend', version='0.1'))
         for i, predict in enumerate(predictions):
             bbox = [predict[0][:2], predict[0][2:]]
-            confidence = predict[1]
+            bbox_confidence = predict[1]
             unit_type = classes[int(predict[2])]
 
             # Get label from OCR
@@ -135,8 +138,8 @@ def main(args):
             else:
                 label = f'{unit_type.to_str()}_{i}'
                 ocr_conf = 0
-
-            legend.features.append(MapUnit(type=unit_type, bounding_box=bbox, label=label))
+            
+            legend.features.append(MapUnit(type=unit_type, label=label, label_bbox=bbox, label_confidence=bbox_confidence*ocr_conf ))
 
         # Visualize the results
         viz_image = image.transpose(1,2,0).copy()
