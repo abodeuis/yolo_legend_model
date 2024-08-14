@@ -8,7 +8,7 @@ from rich.progress import Progress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cmaas_utils.io as io
-from src.utilities import boundingBox, is_intersecting, progress_wrapper
+from .utilities import boundingBox, is_intersecting, progress_wrapper
 
 log = logging.getLogger(__name__)
 

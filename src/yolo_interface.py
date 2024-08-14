@@ -4,7 +4,7 @@ import numpy as np
 from patchify import patchify
 from ultralytics import YOLO
 
-from src.utilities import is_intersecting, mask_and_crop
+from .utilities import is_intersecting, mask_and_crop
 
 log = logging.getLogger('YoloInference')
 
