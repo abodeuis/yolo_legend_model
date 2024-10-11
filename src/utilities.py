@@ -98,34 +98,34 @@ def crop(image, contours):
     crop_image = crop_image.transpose(2,0,1)
     return crop_image, min_pt
 
-def mask_and_crop(image, contours):
-    """
-    Mask image with contours so that only the area inside is visable and crop the image to the bounding box of the
-    visable area
+# def mask_and_crop(image, contours):
+#     """
+#     Mask image with contours so that only the area inside is visable and crop the image to the bounding box of the
+#     visable area
 
-    Args:
-        image : numpy array of shape (C,H,W)
-        contours : list of numpy arrays of shape (N,2) where N is the number of points in the contour
+#     Args:
+#         image : numpy array of shape (C,H,W)
+#         contours : list of numpy arrays of shape (N,2) where N is the number of points in the contour
     
-    Returns:
-        crop_image : numpy array of shape (C,H,W)
-        offset : tuple of (x,y) of the cropped images offset from the orignal image's top left corner.
-    """
-    image = image.transpose(1,2,0)
-    min_pt, max_pt = None, None
-    area_mask = np.zeros((image.shape[0], image.shape[1], 1), dtype='uint8')
-    for area in contours:
-        area_min_pt, area_max_pt = boundingBox(area)
-        cv2.drawContours(area_mask, [area], -1, 255, -1)
-        if min_pt is None:
-            min_pt = area_min_pt
-            max_pt = area_max_pt
-        else:
-            min_pt = (min(min_pt[0], area_min_pt[0]), min(min_pt[1], area_min_pt[1]))
-            max_pt = (max(max_pt[0], area_max_pt[0]), max(max_pt[1], area_max_pt[1]))
+#     Returns:
+#         crop_image : numpy array of shape (C,H,W)
+#         offset : tuple of (x,y) of the cropped images offset from the orignal image's top left corner.
+#     """
+#     image = image.transpose(1,2,0)
+#     min_pt, max_pt = None, None
+#     area_mask = np.zeros((image.shape[0], image.shape[1], 1), dtype='uint8')
+#     for area in contours:
+#         area_min_pt, area_max_pt = boundingBox(area)
+#         cv2.drawContours(area_mask, [area], -1, 255, -1)
+#         if min_pt is None:
+#             min_pt = area_min_pt
+#             max_pt = area_max_pt
+#         else:
+#             min_pt = (min(min_pt[0], area_min_pt[0]), min(min_pt[1], area_min_pt[1]))
+#             max_pt = (max(max_pt[0], area_max_pt[0]), max(max_pt[1], area_max_pt[1]))
 
-    # Mask non legend areas
-    mask_image = cv2.bitwise_and(image, image, mask=area_mask)
-    crop_image = mask_image[min_pt[1]:max_pt[1], min_pt[0]:max_pt[0],:]
-    crop_image = crop_image.transpose(2,0,1)
-    return crop_image, min_pt
+#     # Mask non legend areas
+#     mask_image = cv2.bitwise_and(image, image, mask=area_mask)
+#     crop_image = mask_image[min_pt[1]:max_pt[1], min_pt[0]:max_pt[0],:]
+#     crop_image = crop_image.transpose(2,0,1)
+#     return crop_image, min_pt

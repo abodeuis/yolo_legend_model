@@ -2,11 +2,13 @@
 rasterio
 geopandas
 pydantic
-git+https://github.com/DARPA-CRITICALMAAS/cdr_schemas.git@v0.3.3
+opencv-python
+git+https://github.com/DARPA-CRITICALMAAS/cdr_schemas.git@v0.4.9
 --extra-index-url https://test.pypi.org/simple/
-cmaas_utils>=0.1.10
+cmaas_utils>=0.2.0
 
 # Yolo
+easyocr
 patchify
 ultralytics
 
@@ -15,6 +17,6 @@ rich
 matplotlib
 
 # Dev
-pytest
-pytest-cov
-ruff
+# pytest
+# pytest-cov
+# ruff

@@ -3,8 +3,11 @@ import logging
 import numpy as np
 from patchify import patchify
 from ultralytics import YOLO
+from cmaas_utils.types import AreaBoundary
+from cmaas_utils.utilities import mask_and_crop
+from typing import List
 
-from .utilities import is_intersecting, mask_and_crop
+from .utilities import is_intersecting
 
 log = logging.getLogger('YoloInference')
 
@@ -25,14 +28,13 @@ class YoloInterface:
         norm_data = data / 255.0
         return norm_data
 
-    def inference(self, image, legend_area=None):
+    def inference(self, image:np.ndarray, legend_area:List[AreaBoundary]=None):
         """
         Perform inference on an image and return the predicted bounding boxes.
 
         Args:
             image : numpy array of shape (C,H,W)
-            legend_area : list of numpy arrays of shape (N,2) where N is the number of points in the contour
-                that defines the legend area. If None, the entire image is used.
+            legend_area : List of AreaBoundary objects that define the legend area
 
         Returns:
             list of tuples of the format ([x1,y1,x2,y2], conf, cls)
