@@ -56,6 +56,7 @@ class YoloInterface:
         # Generate patches
         # Pad image so we get a size that can be evenly divided into patches.
         map_channels, map_height, map_width = image.shape
+        patch_step = self.patch_size-self.patch_overlap
         if image.shape[1] < self.patch_size:
             image = np.pad(image, ((0,0), (0, self.patch_size - image.shape[1]), (0,0)), mode='constant', constant_values=0)
             bottom_pad = 0
@@ -67,7 +68,7 @@ class YoloInterface:
         else:
             right_pad = self.patch_size - (map_width % self.patch_size)
         padded_image = np.pad(image, ((0,0), (0, bottom_pad), (0, right_pad)), mode='constant', constant_values=0)
-        map_patches = patchify(padded_image, (3, self.patch_size, self.patch_size), step=self.patch_size-self.patch_overlap)
+        map_patches = patchify(padded_image, (3, self.patch_size, self.patch_size), step=patch_step)
 
         rows = map_patches.shape[1]
         cols = map_patches.shape[2]
