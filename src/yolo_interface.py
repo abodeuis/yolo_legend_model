@@ -44,9 +44,8 @@ class YoloInterface:
         map_channels, map_height, map_width = image.shape
 
         # Reshape maps with 1 channel images (greyscale) to 3 channels for inference
-        if map_channels == 1: # This is tmp fix!    
+        if map_channels == 1:
             image = np.concatenate([image,image,image], axis=0)
-            map_channels = 3
 
         # Cutout legend portion of image
         if legend_area is not None:
@@ -56,11 +55,19 @@ class YoloInterface:
 
         # Generate patches
         # Pad image so we get a size that can be evenly divided into patches.
-        patch_step = self.patch_size-self.patch_overlap
-        right_pad = self.patch_size - (map_width % self.patch_size)
-        bottom_pad = self.patch_size - (map_height % self.patch_size)
+        map_channels, map_height, map_width = image.shape
+        if image.shape[1] < self.patch_size:
+            image = np.pad(image, ((0,0), (0, self.patch_size - image.shape[1]), (0,0)), mode='constant', constant_values=0)
+            bottom_pad = 0
+        else:
+            bottom_pad = self.patch_size - (map_height % self.patch_size)
+        if image.shape[2] < self.patch_size:
+            image = np.pad(image, ((0,0), (0, 0), (0, self.patch_size - image.shape[2])), mode='constant', constant_values=0)
+            right_pad = 0
+        else:
+            right_pad = self.patch_size - (map_width % self.patch_size)
         padded_image = np.pad(image, ((0,0), (0, bottom_pad), (0, right_pad)), mode='constant', constant_values=0)
-        map_patches = patchify(padded_image, (3, self.patch_size, self.patch_size), step=patch_step)
+        map_patches = patchify(padded_image, (3, self.patch_size, self.patch_size), step=self.patch_size-self.patch_overlap)
 
         rows = map_patches.shape[1]
         cols = map_patches.shape[2]
